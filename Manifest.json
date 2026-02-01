@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Focus Zone",
+  "description": "Stay focused with a smart system that blocks distractions and rewards productivity. Earn daily currency for tasks and unlock sites through accountability.",
+  "version": "1.0",
+  "permissions": ["tabs"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
