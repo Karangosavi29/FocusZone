@@ -1,13 +1,15 @@
 const DAILY_LIMITS = {
-  "www.youtube.com": 30,     // 1 minute
+  "www.youtube.com": 1,     // 1 minute
      
 };
 
 const COINS_PER_MINUTE = 1;
+const UNLOCK_COST = 5;        // coins
+const UNLOCK_MINUTES = 10;   // duration
 
 
 let currentDomain = null;
-let startTime = null;
+
 
 function initCurrency() {
   chrome.storage.local.get({ coins: 0 }, (data) => {
@@ -21,6 +23,10 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create("dailyReset", {
     periodInMinutes: 1440
   });
+  chrome.alarms.create("minuteTick", {
+    periodInMinutes: 1
+  });
+
   initCurrency();
 });
 
@@ -28,10 +34,11 @@ function resetDailyUsage() {
   chrome.storage.local.set(
     {
       usage: {},
-      coins: 0
+      coins: 0,
+      unlocks: {}
     },
     () => {
-      console.log("✅ Daily reset: usage & coins");
+      console.log("✅ Daily reset: usage, coins & unlocks");
     }
   );
 }
@@ -97,15 +104,6 @@ function saveTime(domain, seconds) {
   );
 }
 
-function updateTime() {
-  if (!currentDomain || !startTime) return;
-
-  const seconds = Math.floor((Date.now() - startTime) / 1000);
-  if (seconds > 0) {
-    console.log(`Adding ${seconds}s to`, currentDomain);
-    saveTime(currentDomain, seconds);
-  }
-}
 
 function handleTab(tab) {
   const domain = getDomain(tab.url);
@@ -117,37 +115,29 @@ function handleTab(tab) {
 
     // 🚫 Block immediately if limit exceeded
     if (limit && used >= limit) {
-      blockTab(tab.id);
+      isTemporarilyUnlocked(domain, (unlocked) => {
+        if (!unlocked) {
+         blockTab(tab.id);
+        }
+      });
       return;
-    }
-
-    // ⏱️ Save previous domain time
-    if (currentDomain && startTime) {
-      const secs = Math.floor((Date.now() - startTime) / 1000);
-      saveTime(currentDomain, secs);
-    }
-
+    }    
     currentDomain = domain;
-    startTime = Date.now();
     console.log("Now tracking:", domain);
+
+    cleanExpiredUnlocks();
+
   });
 }
 
-
-function resetDailyUsage() {
-  chrome.storage.local.set({ usage: {} }, () => {
-    console.log(" Daily usage reset");
-  });
-}
-
-chrome.runtime.onInstalled.addListener(() => {
-    
-  chrome.alarms.create("dailyReset", {
-    periodInMinutes: 1440 // 24 hours
-  });
-});
 
 chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "minuteTick") {
+    if (currentDomain) {
+      saveTime(currentDomain, 60);
+    }
+  }
+
   if (alarm.name === "dailyReset") {
     resetDailyUsage();
   }
@@ -155,6 +145,60 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 
 
+function isTemporarilyUnlocked(domain, callback) {
+  chrome.storage.local.get({ unlocks: {} }, (data) => {
+    const expiry = data.unlocks[domain];
+    callback(expiry && Date.now() < expiry);
+  });
+}
+
+function unlockSite(domain) {
+  chrome.storage.local.get(
+    { coins: 0, unlocks: {} },
+    (data) => {
+      if (data.coins < UNLOCK_COST) {
+        console.log("❌ Not enough coins");
+        return;
+      }
+
+      const unlockUntil =
+        Date.now() + UNLOCK_MINUTES * 60 * 1000;
+
+      data.unlocks[domain] = unlockUntil;
+
+      chrome.storage.local.set({
+        coins: data.coins - UNLOCK_COST,
+        unlocks: data.unlocks
+      }, () => {
+        console.log(`🔓 ${domain} unlocked for ${UNLOCK_MINUTES} minutes`);
+      });
+    }
+  );
+}
+
+function cleanExpiredUnlocks() {
+  chrome.storage.local.get({ unlocks: {} }, (data) => {
+    const now = Date.now();
+    let changed = false;
+
+    for (const domain in data.unlocks) {
+      if (data.unlocks[domain] <= now) {
+        delete data.unlocks[domain];
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      chrome.storage.local.set({ unlocks: data.unlocks });
+    }
+  });
+}
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.action === "UNLOCK_SITE") {
+    unlockSite(msg.domain);
+  }
+});
 
 
 chrome.tabs.onActivated.addListener(({ tabId }) => {

@@ -19,7 +19,8 @@
   ],
   
   "action": {
-    "default_title": "FocusZone"
+    "default_title": "FocusZone",
+     "default_popup": "popup.html"
   },
   
   "web_accessible_resources": [

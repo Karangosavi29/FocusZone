@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>FocusZone</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      width: 260px;
+      padding: 12px;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .coins {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 6px;
+      background: #22c55e;
+      border: none;
+      border-radius: 6px;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #475569;
+      cursor: not-allowed;
+    }
+
+    .site {
+      font-size: 13px;
+      margin-top: 8px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>🎯 Focus Zone</h2>
+
+  <div class="coins">
+    🪙 Coins: <span id="coinCount">0</span>
+  </div>
+
+  <div class="site">
+    Current site: <br />
+    <strong id="currentSite">—</strong>
+  </div>
+
+  <button id="unlockBtn">Unlock this site (5 coins)</button>
+
+  <script src="popup.js"></script>
+</body>
+</html>
